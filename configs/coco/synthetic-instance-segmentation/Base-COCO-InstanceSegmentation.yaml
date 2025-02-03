@@ -14,6 +14,7 @@ MODEL:
     # NORM: "SyncBN"
     RES5_MULTI_GRID: [1, 1, 1]  # not used
 DATASETS:
+  # TRAIN: ("synthetic_data_instance_train",)
   TRAIN: ("coco_2017_train",)
   TEST: ("coco_2017_val",)
 SOLVER:
@@ -38,6 +39,7 @@ INPUT:
   MIN_SCALE: 0.1
   MAX_SCALE: 2.0
   FORMAT: "RGB"
+  MASK_FORMAT: "bitmask" # add this
   DATASET_MAPPER_NAME: "coco_instance_lsj"
 TEST:
   EVAL_PERIOD: 500

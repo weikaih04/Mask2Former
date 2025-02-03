@@ -112,3 +112,8 @@ def add_maskformer2_config(cfg):
     # Importance sampling parameter for PointRend point sampling during training. Parametr `beta` in
     # the original paper.
     cfg.MODEL.MASK_FORMER.IMPORTANCE_SAMPLE_RATIO = 0.75
+
+    # add wandb
+    cfg.WANDB = CN()
+    cfg.WANDB.PROJECT = "Mask2Former"
+    cfg.WANDB.NAME = None

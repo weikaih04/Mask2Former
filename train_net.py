@@ -1,3 +1,12 @@
+# import debugpy
+# try:
+#     # 5678 is the default attach port in the VS Code debug configurations. Unless a host and port are specified, host defaults to 127.0.0.1
+#     debugpy.listen(("localhost", 9501))
+#     print("Waiting for debugger attach")
+#     debugpy.wait_for_client()
+# except Exception as e:
+#     pass
+
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 """
 MaskFormer Training Script.
@@ -23,6 +32,8 @@ from typing import Any, Dict, List, Set
 import torch
 
 import detectron2.utils.comm as comm
+from detectron2.utils.events import CommonMetricPrinter, JSONWriter
+from mask2former.utils.events import WandbWriter, setup_wandb
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog, build_detection_train_loader
@@ -261,6 +272,31 @@ class Trainer(DefaultTrainer):
             optimizer = maybe_add_gradient_clipping(cfg, optimizer)
         return optimizer
 
+    def build_writers(self):
+        """
+        Build a list of writers to be used. By default it contains
+        writers that write metrics to the screen,
+        a json file, and a tensorboard event file respectively.
+        If you'd like a different list of writers, you can overwrite it in
+        your trainer.
+        Returns:
+            list[EventWriter]: a list of :class:`EventWriter` objects.
+        It is now implemented by:
+        ::
+            return [
+                CommonMetricPrinter(self.max_iter),
+                JSONWriter(os.path.join(self.cfg.OUTPUT_DIR, "metrics.json")),
+                TensorboardXWriter(self.cfg.OUTPUT_DIR),
+            ]
+        """
+        # Here the default print/log frequency of each writer is used.
+        return [
+            # It may not always print what you want to see, since it prints "common" metrics only.
+            CommonMetricPrinter(self.max_iter),
+            JSONWriter(os.path.join(self.cfg.OUTPUT_DIR, "metrics.json")),
+            WandbWriter(),
+        ]
+
     @classmethod
     def test_with_TTA(cls, cfg, model):
         logger = logging.getLogger("detectron2.trainer")
@@ -290,6 +326,8 @@ def setup(args):
     cfg.merge_from_list(args.opts)
     cfg.freeze()
     default_setup(cfg, args)
+    if not args.eval_only:
+        setup_wandb(cfg, args)
     # Setup logger for "mask_former" module
     setup_logger(output=cfg.OUTPUT_DIR, distributed_rank=comm.get_rank(), name="mask2former")
     return cfg
@@ -312,12 +350,18 @@ def main(args):
 
     trainer = Trainer(cfg)
     trainer.resume_or_load(resume=args.resume)
+
+
     return trainer.train()
 
 
 if __name__ == "__main__":
     args = default_argument_parser().parse_args()
     print("Command Line Args:", args)
+    
+    from detectron2.data import DatasetCatalog
+    print(DatasetCatalog.list())    
+
     launch(
         main,
         args.num_gpus,
